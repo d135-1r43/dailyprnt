@@ -7,6 +7,7 @@ import com.dailyprnt.cards.wordoftheday.WordOfTheDayCard;
 import io.quarkus.qute.RawString;
 import io.quarkus.qute.Template;
 import io.quarkus.qute.TemplateInstance;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -23,6 +24,9 @@ public class DailyPage
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
 
     private final Template daily;
+
+	@Inject
+	QuoteCard quoteCard;
 
     public DailyPage(Template daily)
     {
@@ -50,7 +54,7 @@ public class DailyPage
 
         return daily
                 .data("date", formattedDate)
-                .data("quoteCard", new RawString(QuoteCard.card(quote).render()))
+                .data("quoteCard", new RawString(quoteCard.renderCard()))
                 .data("wordCard", new RawString(WordOfTheDayCard.card(word).render()));
     }
 }
