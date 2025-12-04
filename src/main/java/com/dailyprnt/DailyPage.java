@@ -28,6 +28,9 @@ public class DailyPage
 	@Inject
 	QuoteCard quoteCard;
 
+	@Inject
+	WordOfTheDayCard wordOfTheDayCard;
+
     public DailyPage(Template daily)
     {
         this.daily = requireNonNull(daily, "daily is required");
@@ -37,11 +40,6 @@ public class DailyPage
     @Produces(MediaType.TEXT_HTML)
     public TemplateInstance get()
     {
-        Quote quote = new Quote(
-                "The only way to do great work is to love what you do.",
-                "Steve Jobs"
-        );
-
         WordOfTheDay word = new WordOfTheDay(
                 "Serendipity",
                 "/ˌser.ənˈdɪp.ə.ti/",
@@ -55,6 +53,6 @@ public class DailyPage
         return daily
                 .data("date", formattedDate)
                 .data("quoteCard", new RawString(quoteCard.renderCard()))
-                .data("wordCard", new RawString(WordOfTheDayCard.card(word).render()));
+                .data("wordCard", new RawString(wordOfTheDayCard.renderCard()));
     }
 }
