@@ -88,8 +88,3 @@ revision, but changing them now means changing code:
 4. Add the id to `dailyprnt.modules`, in the position it should print.
 
 Nothing else needs editing: the edition assembles whatever the configuration names.
-
-## Known issues
-
-- **KI-4** — `personal-newspaper.html` is an A4 newspaper mockup (210 mm wide), which
-  contradicts the strip format in NFR-1. Keep as inspiration or delete.
