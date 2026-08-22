@@ -33,6 +33,7 @@ to the page assembling the edition.
 settings (quote topic, weather location) are configuration, not hardcoded values.
 
 **FR-5 — Modules in scope.**
+- **Woodcut** — a daily illustration, generated as a carved print and dithered to 1-bit.
 - **Quote** — an inspirational quote with author, on a configured topic. *(exists)*
 - **Word of the Day** — word, pronunciation, part of speech, definition, example. *(exists, but see KI-1)*
 - **Weather** — today's forecast for a configured location.
@@ -57,6 +58,12 @@ wide at 203 dpi**, i.e. a 384 px content column. Length is unbounded.
 **NFR-2 — Monochrome.** Thermal output is 1-bit. Modules must stay legible with no colour
 and no greyscale: no information may be carried by colour alone, and no background fills,
 photographs, or hairlines thinner than 1 px may be required to read a module.
+
+**NFR-2a — Images are dithered, not scaled.** Any image is reduced to 1-bit at the exact
+strip width before it is stored, using Atkinson diffusion, and displayed at that size with
+`image-rendering: pixelated`. Resampling a dithered image averages the dots back into the
+grey the printer cannot reproduce. Sources must be chosen for this: line art survives the
+reduction, continuous-tone photography does not.
 
 **NFR-3 — Cost control.** Rendering an edition must not re-invoke paid AI or weather APIs
 for content already generated for that date (follows from FR-6).

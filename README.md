@@ -15,7 +15,11 @@ cp .env.example .env
 
 | Variable | Purpose |
 | --- | --- |
-| `OPENAI_API_KEY` | OpenAI key for the AI-backed modules. Create one at <https://platform.openai.com/account/api-keys>. |
+| `OPENAI_API_KEY` | OpenAI key for the AI-backed modules, including daily image generation. Create one at <https://platform.openai.com/account/api-keys>. |
+
+The woodcut module generates one image per date, on the cheapest model and quality tier
+(`dailyprnt.woodcut.model`, `dailyprnt.woodcut.quality`). Because an edition is stored once
+per date, reloading never regenerates it.
 
 An exported shell variable of the same name also works and takes precedence over `.env`.
 
