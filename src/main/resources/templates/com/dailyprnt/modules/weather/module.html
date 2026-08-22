@@ -1,0 +1,14 @@
+{@com.dailyprnt.modules.weather.Weather weather}
+<p class="place">{weather.location}</p>
+<p class="conditions">{weather.conditions}</p>
+<div class="range">
+    <span class="high">{weather.high}&deg;</span>
+    <span class="low">{weather.low}&deg;</span>
+    <span class="caption">High</span>
+    <span class="caption">Low</span>
+</div>
+<dl>
+    <div><dt>Rain</dt><dd>{weather.precipitationProbability}%</dd></div>
+    <div><dt>Sunrise</dt><dd>{weather.sunrise}</dd></div>
+    <div><dt>Sunset</dt><dd>{weather.sunset}</dd></div>
+</dl>

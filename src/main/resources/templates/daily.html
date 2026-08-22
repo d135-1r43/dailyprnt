@@ -1,128 +1,312 @@
+{@java.lang.String date}
+{@com.dailyprnt.edition.PrintedEdition edition}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Daily</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dailyprnt — {date}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{|
+/* ---------------------------------------------------------------------------
+   dailyprnt — 58 mm thermal strip (384 dots @ 203 dpi).
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-            background-color: #fff;
-            color: #000;
-            min-height: 100vh;
-            max-width: 380px;
-            margin: 0 auto;
-            padding: 2rem 1.5rem;
-            line-height: 1.6;
-        }
+   Everything inside .strip is pure black on pure white: thermal output is
+   1-bit, so hierarchy is carried by size, weight, case, tracking and rule
+   weight only. No greys, no fills, no hairlines below 1px.
+   The backdrop outside the strip is screen-only chrome and never prints.
+   --------------------------------------------------------------------------- */
 
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid #ccc;
-        }
+:root {
+    --strip: 384px;
+    --gutter: 26px;
+    --ink: #000;
+    --paper: #fff;
+    --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
 
-        header h1 {
-            font-size: 2.5rem;
-            font-weight: 200;
-            letter-spacing: 0.5rem;
-            text-transform: uppercase;
-        }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-        header p {
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 0.5rem;
-            letter-spacing: 0.2rem;
-        }
+body {
+    background: #16171a;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 48px 16px 96px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
 
-        .card {
-            margin-bottom: 3rem;
-            padding: 2rem 0;
-            border-bottom: 1px solid #ddd;
-        }
+/* --- the strip ---------------------------------------------------------- */
 
-        .card:last-child {
-            border-bottom: none;
-        }
+.strip {
+    width: var(--strip);
+    background: var(--paper);
+    color: var(--ink);
+    padding: 30px var(--gutter) 34px;
+    font-family: var(--serif);
+    font-optical-sizing: auto;
+    position: relative;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, .55);
+    hanging-punctuation: first last;
+}
 
-        .quote-card blockquote {
-            position: relative;
-        }
+/* Torn perforation, screen only. */
+.strip::before,
+.strip::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 7px;
+    background: radial-gradient(circle at 5px -2px, transparent 5px, var(--paper) 5px);
+    background-size: 10px 7px;
+}
+.strip::before { top: -6px; transform: scaleY(-1); }
+.strip::after { bottom: -6px; }
 
-        .quote-card .quote-text {
-            font-size: 1.5rem;
-            font-weight: 300;
-            font-style: italic;
-            line-height: 1.8;
-            margin-bottom: 1.5rem;
-            padding-left: 1.5rem;
-            border-left: 2px solid #000;
-        }
+/* --- masthead ----------------------------------------------------------- */
 
-        .quote-card .quote-author {
-            font-size: 0.875rem;
-            color: #555;
-            text-align: right;
-            font-style: normal;
-            letter-spacing: 0.1rem;
-        }
+.masthead { text-align: center; }
 
-        .word-card .word-title {
-            font-size: 2rem;
-            font-weight: 600;
-            letter-spacing: 0.05rem;
-            margin-bottom: 0.5rem;
-        }
+.masthead h1 {
+    font-family: var(--mono);
+    font-size: 27px;
+    font-weight: 600;
+    letter-spacing: .30em;
+    text-indent: .30em;      /* optical: recentre against the trailing track */
+    text-transform: uppercase;
+    line-height: 1;
+}
 
-        .word-card .word-pronunciation {
-            font-size: 1rem;
-            color: #555;
-            font-style: italic;
-            margin-bottom: 0.25rem;
-        }
+.masthead .rule {
+    border-top: 3px double var(--ink);
+    margin: 11px 0 9px;
+}
 
-        .word-card .word-pos {
-            font-size: 0.75rem;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 0.15rem;
-            margin-bottom: 1.5rem;
-        }
+.masthead time {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-indent: .22em;
+    text-transform: uppercase;
+}
 
-        .word-card .word-definition {
-            font-size: 1.125rem;
-            font-weight: 300;
-            line-height: 1.7;
-            margin-bottom: 1.5rem;
-        }
+/* --- module blocks ------------------------------------------------------ */
 
-        .word-card .word-example {
-            font-size: 0.9375rem;
-            color: #444;
-            font-style: italic;
-            padding-left: 1rem;
-            border-left: 1px solid #bbb;
-        }
+.block { padding: 26px 0 2px; }
+
+.block + .block { border-top: 1px dashed var(--ink); }
+
+/* Centred label with a rule running out to both edges. */
+.block > h2 {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: .24em;
+    text-indent: .24em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+.block > h2::before,
+.block > h2::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--ink);
+}
+
+/* --- shared text -------------------------------------------------------- */
+
+.block p {
+    hyphens: auto;
+    text-wrap: pretty;
+}
+
+.unavailable {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-align: center;
+    padding: 6px 0 10px;
+}
+
+/* --- quote -------------------------------------------------------------- */
+
+.quote blockquote p {
+    font-size: 19px;
+    line-height: 1.42;
+    text-indent: -.44em;     /* hang the opening quote into the gutter */
+    text-align: left;
+}
+
+.quote figcaption {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .17em;
+    text-transform: uppercase;
+    text-align: right;
+    margin-top: 15px;
+}
+
+/* --- word of the day ---------------------------------------------------- */
+
+.wordoftheday .headword {
+    font-size: 33px;
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -.012em;
+    text-wrap: balance;
+    hyphens: auto;
+}
+
+.wordoftheday .pronunciation {
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.wordoftheday .pos {
+    font-size: 13px;
+    font-style: italic;
+    margin-top: 9px;
+    padding-bottom: 13px;
+    border-bottom: 1px solid var(--ink);
+}
+
+.wordoftheday .definition {
+    font-size: 15.5px;
+    line-height: 1.5;
+    margin-top: 13px;
+}
+
+.wordoftheday .example {
+    font-size: 14px;
+    font-style: italic;
+    line-height: 1.45;
+    margin-top: 13px;
+    padding-left: 13px;
+    border-left: 1px solid var(--ink);
+}
+
+/* --- weather ------------------------------------------------------------ */
+
+.weather .place {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: .19em;
+    text-transform: uppercase;
+}
+
+.weather .conditions {
+    font-size: 23px;
+    line-height: 1.15;
+    margin-top: 7px;
+    text-wrap: balance;
+}
+
+.weather .range {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    align-items: baseline;
+    column-gap: 16px;
+    margin-top: 13px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.weather .high { font-size: 46px; font-weight: 500; line-height: .95; }
+.weather .low  { font-size: 23px; line-height: 1; }
+
+.weather .range .caption {
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    margin-top: 5px;
+}
+
+.weather dl {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px 8px;
+    margin-top: 13px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+}
+.weather dt {
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+.weather dd { font-size: 14px; }
+
+/* --- colophon ----------------------------------------------------------- */
+
+.colophon {
+    margin-top: 28px;
+    padding-top: 12px;
+    border-top: 3px double var(--ink);
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 500;
+    letter-spacing: .2em;
+    text-indent: .2em;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+/* --- print: the strip is the page --------------------------------------- */
+
+@page {
+    size: 58mm auto;
+    margin: 0;
+}
+
+@media print {
+    body { background: none; display: block; padding: 0; }
+    .strip {
+        width: 58mm;
+        box-shadow: none;
+        padding: 4mm 3mm 6mm;
+    }
+    .strip::before, .strip::after { display: none; }
+}
+|}
     </style>
 </head>
 <body>
-    <header>
-        <h1>Daily</h1>
-        <p>{date}</p>
+<div class="strip">
+    <header class="masthead">
+        <h1>dailyprnt</h1>
+        <div class="rule"></div>
+        <time>{date}</time>
     </header>
 
     <main>
-        {quoteCard}
-
-        {wordCard}
+        {#for block in edition.blocks}
+        <section class="block {block.moduleId}">
+            <h2>{block.title}</h2>
+            {block.html.raw}
+        </section>
+        {/for}
     </main>
+
+    <footer class="colophon">— end of transmission —</footer>
+</div>
 </body>
 </html>

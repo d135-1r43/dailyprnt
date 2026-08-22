@@ -1,58 +1,68 @@
 package com.dailyprnt;
 
-import com.dailyprnt.cards.quote.Quote;
-import com.dailyprnt.cards.quote.QuoteCard;
-import com.dailyprnt.cards.wordoftheday.WordOfTheDay;
-import com.dailyprnt.cards.wordoftheday.WordOfTheDayCard;
-import io.quarkus.qute.RawString;
-import io.quarkus.qute.Template;
+import com.dailyprnt.edition.PrintedEdition;
+import com.dailyprnt.edition.EditionService;
+import io.quarkus.qute.CheckedTemplate;
 import io.quarkus.qute.TemplateInstance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-
-import static java.util.Objects.requireNonNull;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
 
 @Path("/daily")
 public class DailyPage
 {
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy");
+	private static final DateTimeFormatter DATE_FORMATTER =
+			DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH);
 
-    private final Template daily;
+	@CheckedTemplate(basePath = "")
+	static class Templates
+	{
+		static native TemplateInstance daily(String date, PrintedEdition edition);
+	}
 
 	@Inject
-	QuoteCard quoteCard;
+	EditionService editions;
 
-	@Inject
-	WordOfTheDayCard wordOfTheDayCard;
+	@GET
+	@Produces(MediaType.TEXT_HTML)
+	public TemplateInstance today()
+	{
+		return strip(LocalDate.now());
+	}
 
-    public DailyPage(Template daily)
-    {
-        this.daily = requireNonNull(daily, "daily is required");
-    }
+	@GET
+	@Path("/{date}")
+	@Produces(MediaType.TEXT_HTML)
+	public TemplateInstance on(@PathParam("date") String date)
+	{
+		return strip(parse(date));
+	}
 
-    @GET
-    @Produces(MediaType.TEXT_HTML)
-    public TemplateInstance get()
-    {
-        WordOfTheDay word = new WordOfTheDay(
-                "Serendipity",
-                "/ˌser.ənˈdɪp.ə.ti/",
-                "noun",
-                "The occurrence of events by chance in a happy or beneficial way.",
-                "The discovery was a serendipity that changed the course of science."
-        );
+	private TemplateInstance strip(LocalDate date)
+	{
+		return Templates.daily(date.format(DATE_FORMATTER), editions.editionFor(date));
+	}
 
-        String formattedDate = LocalDate.now().format(DATE_FORMATTER);
-
-        return daily
-                .data("date", formattedDate)
-                .data("quoteCard", new RawString(quoteCard.renderCard()))
-                .data("wordCard", new RawString(wordOfTheDayCard.renderCard()));
-    }
+	private static LocalDate parse(String date)
+	{
+		try
+		{
+			return LocalDate.parse(date);
+		}
+		catch (DateTimeParseException e)
+		{
+			throw new WebApplicationException(
+					"Expected a date as YYYY-MM-DD but got '" + date + "'", Response.Status.BAD_REQUEST);
+		}
+	}
 }

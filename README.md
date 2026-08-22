@@ -24,6 +24,20 @@ with `invalid_api_key` when rendering. Setting the variable to an *empty* value 
 stops the app from booting at all (`SRCFG00040`), so replace the placeholder rather than
 blanking it.
 
+## Usage
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /daily` | Today's strip. |
+| `GET /daily/{date}` | The strip for an ISO date, e.g. `/daily/2026-08-22`. |
+
+An edition is generated once per date and stored, so reloading replays the same strip
+rather than regenerating it. The page is laid out for a 58 mm thermal printer and prints
+to that width directly from the browser.
+
+Modules and their order are set by `dailyprnt.modules`; see
+[docs/requirements.md](docs/requirements.md) for how to add one.
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:

@@ -69,9 +69,10 @@ independently designed web page.
 - Push delivery or scheduled pre-generation — editions are generated lazily on first request.
 - Any module beyond the three named in FR-5.
 
-## Assumptions to confirm
+## Assumptions in force
 
-These were decided by default and are cheap to change now, expensive later:
+These were decided by default and are implemented as described. They are still open to
+revision, but changing them now means changing code:
 
 - **A-1** — Target width is 58 mm / 384 px (NFR-1) rather than 80 mm / 576 px.
 - **A-2** — Editions are generated lazily on first request and persisted (FR-6), rather
@@ -79,18 +80,16 @@ These were decided by default and are cheap to change now, expensive later:
 - **A-3** — Single user; configuration lives in `application.properties` (FR-4) rather than
   a per-user subscription model.
 
+## Adding a module
+
+1. Implement `com.dailyprnt.modules.Module`, returning a stable `id()`.
+2. Add a Qute template under `templates/com/dailyprnt/modules/<id>/module.html`.
+3. Style it in `templates/daily.html` under a `.<id>` selector, keeping to NFR-2.
+4. Add the id to `dailyprnt.modules`, in the position it should print.
+
+Nothing else needs editing: the edition assembles whatever the configuration names.
+
 ## Known issues
 
-- **KI-1** — `WordOfTheDayCard`'s content is hardcoded to "Serendipity" in `DailyPage`;
-  its AI service is injected but never called.
-- **KI-2** — A failing module currently returns HTTP 500 for the whole page, violating FR-7.
-- **KI-3** — `GreetingResourceTest`/`GreetingResourceIT` are starter-template leftovers
-  asserting a `/hello` endpoint that does not exist.
 - **KI-4** — `personal-newspaper.html` is an A4 newspaper mockup (210 mm wide), which
   contradicts the strip format in NFR-1. Keep as inspiration or delete.
-
-## Naming note
-
-The code calls the module abstraction `Card` (`com.dailyprnt.cards.Card`). These
-requirements use **module**. Renaming the code to match is recommended so that the
-vocabulary is consistent.
