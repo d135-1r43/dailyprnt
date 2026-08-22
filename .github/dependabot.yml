@@ -1,0 +1,59 @@
+# Grouped version updates. Grouping keeps related bumps in one pull request, so a
+# Quarkus platform move lands as a single reviewable change rather than one PR per
+# artifact.
+version: 2
+
+updates:
+  # --- Maven ---------------------------------------------------------------
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # The platform BOM, the extensions and the Quarkus Maven plugin are version
+      # locked to each other and must move together or the build breaks.
+      quarkus:
+        patterns:
+          - "io.quarkus:*"
+          - "io.quarkus.platform:*"
+          - "io.quarkiverse.*:*"
+      build-plugins:
+        patterns:
+          - "org.apache.maven.plugins:*"
+          - "org.codehaus.mojo:*"
+      test:
+        patterns:
+          - "org.junit*:*"
+          - "io.rest-assured:*"
+          - "org.hamcrest:*"
+          - "org.assertj:*"
+      # Anything not caught above, so a stray dependency still gets updated.
+      other:
+        patterns:
+          - "*"
+
+  # --- GitHub Actions ------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # --- Docker --------------------------------------------------------------
+  # The Dockerfiles live under src/main/docker, not the repository root.
+  - package-ecosystem: docker
+    directories:
+      - "/src/main/docker"
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      base-images:
+        patterns:
+          - "*"
