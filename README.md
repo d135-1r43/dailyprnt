@@ -4,6 +4,26 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
+## Configuration
+
+Secrets are read from a `.env` file in the project root, which is git-ignored.
+Copy the template and fill in your key:
+
+```shell script
+cp .env.example .env
+```
+
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | OpenAI key for the AI-backed modules. Create one at <https://platform.openai.com/account/api-keys>. |
+
+An exported shell variable of the same name also works and takes precedence over `.env`.
+
+Leave the placeholder in place and the app still starts, but the AI-backed modules fail
+with `invalid_api_key` when rendering. Setting the variable to an *empty* value instead
+stops the app from booting at all (`SRCFG00040`), so replace the placeholder rather than
+blanking it.
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
