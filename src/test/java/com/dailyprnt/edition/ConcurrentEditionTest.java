@@ -1,15 +1,16 @@
 package com.dailyprnt.edition;
 
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -19,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Two requests for the same date arriving together used to race: both found no stored
- * edition, both generated one, and the second insert violated the unique constraint on
- * the date, surfacing as a 500.
+ * Two requests for the same date arriving together must not both generate it. Generating
+ * costs a paid image generation, so duplicating the work is not merely wasteful, and the
+ * duplicate insert used to violate the unique constraint on the date.
  */
 @QuarkusTest
 @TestProfile(ConcurrentGenerationProfile.class)
@@ -38,6 +39,12 @@ class ConcurrentEditionTest
 	@Inject
 	GatedModule gatedModule;
 
+	@BeforeEach
+	void resetModule()
+	{
+		gatedModule.reset();
+	}
+
 	@AfterEach
 	@Transactional
 	void cleanup()
@@ -46,49 +53,80 @@ class ConcurrentEditionTest
 	}
 
 	@Test
-	void shouldSurviveTwoRequestsGeneratingTheSameDateAtOnce() throws Exception
+	void shouldGenerateOnlyOnceWhenASecondRequestArrivesMidGeneration() throws Exception
 	{
-		// given both requests are held inside render() until the other arrives, so each is
-		// guaranteed to have already missed the lookup for a stored edition
-		gatedModule.expectConcurrentRenders(2);
+		// given one request held inside render, so the second is guaranteed to arrive
+		// while the first is still generating
+		gatedModule.hold();
 		ExecutorService pool = Executors.newFixedThreadPool(2);
+		Future<PrintedEdition> first = pool.submit(() -> editions.editionFor(DATE));
+		gatedModule.awaitRenderStarted();
 
-		// when
-		Callable<PrintedEdition> request = () -> editions.editionFor(DATE);
-		Future<PrintedEdition> first = pool.submit(request);
-		Future<PrintedEdition> second = pool.submit(request);
+		// when a second request asks for the same date
+		Future<PrintedEdition> second = pool.submit(() -> editions.editionFor(DATE));
+		gatedModule.release();
 		PrintedEdition a = first.get(30, TimeUnit.SECONDS);
 		PrintedEdition b = second.get(30, TimeUnit.SECONDS);
 		pool.shutdown();
 
-		// then neither request fails, and both print the one edition that was stored
-		assertEquals(1, repository.count(), "the race stored more than one edition for the date");
-		assertEquals(DATE, a.date());
-		assertEquals(DATE, b.date());
-		assertEquals(html(a), html(b), "the two requests printed different strips for the same date");
+		// then the work was done once and shared, not paid for twice
+		assertEquals(1, gatedModule.renderCount(), "the edition was generated more than once");
+		assertEquals(1, repository.count());
+		assertEquals(html(a), html(b));
+		assertTrue(html(a).contains("render 1"));
 	}
 
 	@Test
-	void shouldStillReplayAStoredEditionAfterARace() throws Exception
+	void shouldReplayTheStoredEditionOnceGenerationHasFinished() throws Exception
 	{
-		// given a date that was generated under contention
-		gatedModule.expectConcurrentRenders(2);
+		// given a date generated while another request waited
+		gatedModule.hold();
 		ExecutorService pool = Executors.newFixedThreadPool(2);
-		Callable<PrintedEdition> request = () -> editions.editionFor(DATE);
-		Future<PrintedEdition> first = pool.submit(request);
-		Future<PrintedEdition> second = pool.submit(request);
-		String raced = html(first.get(30, TimeUnit.SECONDS));
-		second.get(30, TimeUnit.SECONDS);
+		Future<PrintedEdition> first = pool.submit(() -> editions.editionFor(DATE));
+		gatedModule.awaitRenderStarted();
+		gatedModule.release();
+		String generated = html(first.get(30, TimeUnit.SECONDS));
 		pool.shutdown();
 
-		// when a later request asks for the same date, with the gate no longer held
-		gatedModule.expectConcurrentRenders(1);
+		// when a later request asks for it
 		PrintedEdition replayed = editions.editionFor(DATE);
 
-		// then it replays the stored edition rather than generating a second one
+		// then
+		assertEquals(1, gatedModule.renderCount());
+		assertEquals(generated, html(replayed));
+	}
+
+	@Test
+	void shouldFallBackToTheStoredEditionWhenAnotherInstanceInsertsFirst() throws Exception
+	{
+		// given a request held mid-generation, and another instance storing the same date
+		// before it gets to persist. The in-process lock cannot see that instance, so the
+		// unique constraint is what catches it.
+		gatedModule.hold();
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		Future<PrintedEdition> request = pool.submit(() -> editions.editionFor(DATE));
+		gatedModule.awaitRenderStarted();
+		storeCompetingEdition();
+
+		// when the held request resumes and its insert collides
+		gatedModule.release();
+		PrintedEdition result = request.get(30, TimeUnit.SECONDS);
+		pool.shutdown();
+
+		// then it prints the edition that was already stored rather than failing
 		assertEquals(1, repository.count());
-		assertEquals(raced, html(replayed));
-		assertTrue(replayed.blocks().stream().noneMatch(PrintedEdition.PrintedBlock::failed));
+		assertTrue(html(result).contains("from another instance"));
+	}
+
+	/** Writes an edition for the date directly, standing in for a second instance. */
+	private void storeCompetingEdition()
+	{
+		QuarkusTransaction.requiringNew().run(() -> {
+			Edition edition = new Edition();
+			edition.date = DATE;
+			edition.add(EditionBlock.of("gated", "Gated", "<p>from another instance</p>", false));
+			repository.persist(edition);
+		});
 	}
 
 	private static String html(PrintedEdition edition)

@@ -3,23 +3,53 @@ package com.dailyprnt.edition;
 import com.dailyprnt.modules.Module;
 import jakarta.enterprise.context.ApplicationScoped;
 
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Test module that holds every caller at a barrier until the expected number of
- * concurrent renders have arrived, so a race is forced rather than hoped for.
+ * Test module that can be held mid-render, so a second request is guaranteed to arrive
+ * while the first is still generating. Counts renders, which is how the tests tell
+ * "generated once and shared" apart from "generated twice".
  */
 @ApplicationScoped
 public class GatedModule implements Module
 {
-	private volatile CyclicBarrier barrier;
+	private final AtomicInteger renders = new AtomicInteger();
+	private volatile CountDownLatch entered = new CountDownLatch(1);
+	private volatile CountDownLatch released = new CountDownLatch(0);
 
-	public void expectConcurrentRenders(int parties)
+	/** Makes the next render block until {@link #release()}. */
+	public void hold()
 	{
-		barrier = new CyclicBarrier(parties);
+		entered = new CountDownLatch(1);
+		released = new CountDownLatch(1);
+	}
+
+	/** Waits until a render is actually in progress. */
+	public void awaitRenderStarted() throws InterruptedException
+	{
+		if (!entered.await(10, TimeUnit.SECONDS))
+		{
+			throw new IllegalStateException("no render started");
+		}
+	}
+
+	public void release()
+	{
+		released.countDown();
+	}
+
+	public int renderCount()
+	{
+		return renders.get();
+	}
+
+	public void reset()
+	{
+		renders.set(0);
+		entered = new CountDownLatch(1);
+		released = new CountDownLatch(0);
 	}
 
 	@Override
@@ -37,18 +67,17 @@ public class GatedModule implements Module
 	@Override
 	public String render()
 	{
-		CyclicBarrier gate = barrier;
-		if (gate != null)
+		int render = renders.incrementAndGet();
+		entered.countDown();
+		try
 		{
-			try
-			{
-				gate.await(10, TimeUnit.SECONDS);
-			}
-			catch (InterruptedException | BrokenBarrierException | TimeoutException e)
-			{
-				throw new IllegalStateException("gate was never reached by all renderers", e);
-			}
+			released.await(10, TimeUnit.SECONDS);
 		}
-		return "<p class=\"gated\">gated</p>";
+		catch (InterruptedException e)
+		{
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("interrupted while held", e);
+		}
+		return "<p class=\"gated\">render " + render + "</p>";
 	}
 }

@@ -11,6 +11,8 @@ import org.jboss.logging.Logger;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * Generates an edition once per date and replays it thereafter.
@@ -26,6 +28,8 @@ public class EditionService
 	@Inject
 	ModuleRegistry registry;
 
+	private final ConcurrentMap<LocalDate, Object> generationLocks = new ConcurrentHashMap<>();
+
 	public PrintedEdition editionFor(LocalDate date)
 	{
 		PrintedEdition stored = stored(date);
@@ -34,6 +38,28 @@ public class EditionService
 			return stored;
 		}
 
+		// Generating costs a paid image and the better part of a minute, so only one
+		// request per date does the work. The rest wait here and then read what it stored,
+		// rather than each paying to generate the same day over again.
+		synchronized (lockFor(date))
+		{
+			PrintedEdition arrived = stored(date);
+			return arrived != null ? arrived : generate(date);
+		}
+	}
+
+	/**
+	 * One monitor per date, kept for the life of the process. Dropping it once generation
+	 * finished would let a waiting request take a fresh monitor and generate in parallel
+	 * after all, and the entries are a handful of bytes each.
+	 */
+	private Object lockFor(LocalDate date)
+	{
+		return generationLocks.computeIfAbsent(date, ignored -> new Object());
+	}
+
+	private PrintedEdition generate(LocalDate date)
+	{
 		// Modules call slow upstream APIs, so render before opening a transaction rather
 		// than holding a database connection for the duration.
 		List<EditionBlock> blocks = renderAll();
@@ -44,15 +70,16 @@ public class EditionService
 		}
 		catch (RuntimeException e)
 		{
-			// A concurrent request may have generated the same date first. The unique
-			// constraint on the date is what makes that collision detectable; if a stored
-			// edition exists now, that request won and its edition is the one to print.
+			// The lock above only covers this process, so a second instance can still get
+			// there first. The unique constraint on the date is what makes that detectable;
+			// if a stored edition exists now, that instance won and its edition is the one
+			// to print.
 			PrintedEdition winner = stored(date);
 			if (winner == null)
 			{
 				throw e;
 			}
-			LOG.debugf("Lost the race to generate %s, replaying the stored edition", date);
+			LOG.warnf("Another instance stored the edition for %s first, replaying it", date);
 			return winner;
 		}
 	}
