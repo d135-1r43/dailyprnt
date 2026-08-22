@@ -2,6 +2,13 @@
 
 ## Project Overview
 
+**dailyprnt** assembles a daily strip of personal content from independent modules, in the
+spirit of Berg's Little Printer. Long-term target is a thermal printer; for now it is
+delivered as a web page shaped like the printed strip.
+
+**Read [docs/requirements.md](docs/requirements.md) before making design decisions** — it
+defines the module concept, strip geometry, and what is deliberately out of scope.
+
 Service built with **Quarkus** and **Java 21**
 
 ## Code Style & Formatting
