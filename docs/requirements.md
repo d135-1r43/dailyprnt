@@ -42,6 +42,9 @@ the same date returns identical content rather than regenerating it. This keeps 
 strip and the screen in agreement, makes history browsable, and avoids paying for the same
 AI call twice.
 
+**FR-6a — Concurrent requests.** Two requests for the same date arriving together must
+both succeed and print the same edition. Exactly one is stored.
+
 **FR-7 — Module failure isolation.** A module that fails — API error, timeout, bad
 credentials — must degrade to a placeholder block within the edition. It must never
 prevent the rest of the edition from rendering. *(Currently violated: see KI-2.)*
